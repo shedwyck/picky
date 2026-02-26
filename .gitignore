@@ -1,0 +1,28 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Distribution / build
+build/
+dist/
+*.egg-info
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDE / Editor files
+.vscode/
+.idea/
+
+# Data / output files (optional, only if you don't want to track CSVs)
+# game_ids.csv
+# *.csv
