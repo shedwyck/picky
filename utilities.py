@@ -1,68 +1,82 @@
+import pandas as pd
+import time
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import commonplayerinfo
-import re
+
+# Load your single stats CSV
+df_stats = pd.read_csv('player_stats.csv')
 
 def normalize_position(pos: str) -> str:
     """
-      Normalize the player position string to a standard format (G, F, C, G-F, F-C) or return "Unknown" if it doesn't match known patterns.
+    Normalize the player position string to a standard format (G, F, C, G-F, F-C) 
+    or return "Unknown" if it doesn't match known patterns.
     """
-    # Normalize key to uppercase and hyphen-separated
     key = (pos or "").replace(" ", "-").upper()
     mapping = {
-        # Single-letter
         "G": "G", "F": "F", "C": "C",
-        # Hyphenated single-letter combos
         "G-F": "G-F", "F-G": "G-F", "F-C": "F-C", "C-F": "F-C",
-        # Full words
         "GUARD": "G", "FORWARD": "F", "CENTER": "C",
         "GUARD-FORWARD": "G-F", "FORWARD-GUARD": "G-F",
         "FORWARD-CENTER": "F-C", "CENTER-FORWARD": "F-C",
     }
     return mapping.get(key, "Unknown")
 
-def get_player_position(player_name: str) -> str:
+def get_position_by_name(player_name: str) -> str:
     """
-    Get the position of a player given their first and last name (e.g., "Stephen Curry").
-
-    Args:
-        player_name (str): The full name of the player.
-
-    Returns:
-        str: The position of the player: G | F | C | G-F | F-C | Unknown
+    Searches the NBA API by player_name to get their official NBA ID, 
+    then fetches their position safely.
     """
-    player_id = None
+    if not isinstance(player_name, str) or not player_name.strip():
+        return "Unknown"
+        
     try:
-        # Search for the player by name
+        # 1. Search the static dictionary by name (this is local and lightning fast)
         player_search = players.find_players_by_full_name(player_name)
+        
         if not player_search:
+            print(f"  -> Player not found in NBA database: {player_name}")
             return "Unknown"
-        player_id = player_search[0]['id']
-          
-        # Fetch the player's info using their ID
-        player_info = commonplayerinfo.CommonPlayerInfo(player_id=player_id)
-          
-        # Parse the returned dictionary
+            
+        # Grab the official NBA ID from the first search result
+        official_nba_id = player_search[0]['id']
+        
+        # 2. Guardrail: Pause for 0.6 seconds so the NBA API doesn't ban our IP
+        time.sleep(0.6)
+        
+        # 3. Fetch info using the official NBA ID
+        player_info = commonplayerinfo.CommonPlayerInfo(player_id=official_nba_id)
         details = player_info.get_normalized_dict()['CommonPlayerInfo'][0]
-        pos_raw = details.get('POSITION', '') or ''
-        # Split on hyphen or slash; trim parts
-        parts = [p.strip() for p in re.split(r'[-/]', pos_raw) if p.strip()]
-        if len(parts) > 2:
-            chosen = parts[-1]  # Pick the latter one when more than 2 positions
-        elif len(parts) == 2:
-            # Preserve as hyphenated combo (use single-letter if parts are single-letter)
-            if all(len(p) == 1 for p in parts):
-                chosen = f"{parts[0].upper()}-{parts[1].upper()}"
-            else:
-                chosen = f"{parts[0].capitalize()}-{parts[1].capitalize()}"
-        else:
-            chosen = pos_raw.strip()
-        return normalize_position(chosen)
+        pos_raw = details.get('POSITION', '')
+        
+        return normalize_position(pos_raw)
+        
     except Exception as e:
-        print(f"Error retrieving position for player '{player_name}': {e}")
+        print(f"  -> Error retrieving position for '{player_name}': {e}")
         return "Unknown"
 
+def rewrite_player_stats(df):
+    """
+    Applies the name lookup to the dataframe and saves the updated CSV.
+    """
+    if 'player_name' not in df.columns:
+        print("Critical Error: 'player_name' column missing from CSV!")
+        return df
 
+    print("Fetching positions from NBA API using names... this might take a moment.")
+    
+    # Apply the fetch function to the player_name column
+    df['position'] = df['player_name'].apply(get_position_by_name)
+    
+    # Save the result to a new CSV
+    df.to_csv('player_stats_updated.csv', index=False)
+    print("\nSuccess! Data saved to 'player_stats_updated.csv'.")
+    
+    return df
 
-print(get_player_position("LeBron James"))
-# sample input that would return F-C
-print(get_player_position("Anthony Davis"))
+if __name__ == "__main__":
+    # Run the main script on your single CSV
+    updated_dataframe = rewrite_player_stats(df_stats)
+    
+    # Print the first few rows to verify it worked
+    print("\nPreview of updated data:")
+    print(updated_dataframe[['player_name', 'position']].head())
