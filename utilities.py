@@ -54,9 +54,29 @@ def get_position_by_name(player_name: str) -> str:
         print(f"  -> Error retrieving position for '{player_name}': {e}")
         return "Unknown"
 
+def calculate_fantasy(row): 
+    """
+    draft, not final, just to add code structure will adjust after thinking better
+    """
+    
+    pos = row.get('position', 'Unknown')
+    pts = row.get('pts', 0)
+    rebs = row.get('rebs', 0)
+    ast = row.get('ast', 0)
+    stl = row.get('stl', 0)
+    if pos == "G":
+        return pts + ast
+    elif pos == "G-F":
+        return pts + rebs
+    elif pos in ["F", "C", "F-C"]:
+        return rebs + stl
+    else:
+        return 0
+
 def rewrite_player_stats(df):
     """
     Applies the name lookup to the dataframe and saves the updated CSV.
+    Adds 'position' and 'fantasy' columns.
     """
     if 'player_name' not in df.columns:
         print("Critical Error: 'player_name' column missing from CSV!")
@@ -66,6 +86,9 @@ def rewrite_player_stats(df):
     
     # Apply the fetch function to the player_name column
     df['position'] = df['player_name'].apply(get_position_by_name)
+    
+    # Calculate fantasy column based on position and stats
+    df['fantasy'] = df.apply(calculate_fantasy, axis=1)
     
     # Save the result to a new CSV
     df.to_csv('player_stats_updated.csv', index=False)
@@ -79,4 +102,4 @@ if __name__ == "__main__":
     
     # Print the first few rows to verify it worked
     print("\nPreview of updated data:")
-    print(updated_dataframe[['player_name', 'position']].head())
+    print(updated_dataframe[['player_name', 'position', 'fantasy']].head())
