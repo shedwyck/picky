@@ -13,12 +13,15 @@ class Player:
     pts: int = 0
     reb: int = 0
     ast: int = 0
+    stl: int = 0
+    blk: int = 0
     pos: str = ""
     team: str = ""
 
 f = "{gameId}: {awayTeam} vs. {homeTeam} @ {gameTimeLTZ}" 
 def get_game_stats(game):
     box = boxscore.BoxScore(game)
+
     team = box.home_team_stats.get_dict()
     print(team['teamName'])
     all_players = box.home_team_player_stats.get_dict() + box.away_team_player_stats.get_dict()
@@ -29,7 +32,9 @@ def get_game_stats(game):
             name=player['name'],
             pts=player['statistics']['points'],
             reb=player['statistics']['reboundsTotal'],
-            ast=player['statistics']['assists']
+            ast=player['statistics']['assists'],
+            stl = player['statistics']['steals'],
+            blk = player['statistics']['blocks']
         )
         stats.append(current_player)
     return stats
@@ -50,6 +55,8 @@ def overall_tracker(current, overall):
         overall[name]['pts'] += player['points']
         overall[name]['reb'] += player['rebounds']
         overall[name]['ast'] += player['assists']
+        overall[name]['stl'] += player['steals']
+        overall[name]['blk'] += player['blocks']
         overall[name]['games'] += 1
     
 # print(get_game_stats('0022500840'))

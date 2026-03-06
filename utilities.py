@@ -46,6 +46,7 @@ def get_position_by_name(player_name: str) -> str:
         # 3. Fetch info using the official NBA ID
         player_info = commonplayerinfo.CommonPlayerInfo(player_id=official_nba_id)
         details = player_info.get_normalized_dict()['CommonPlayerInfo'][0]
+        print(details)
         pos_raw = details.get('POSITION', '')
         
         return normalize_position(pos_raw)
